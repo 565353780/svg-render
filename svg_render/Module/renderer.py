@@ -10,6 +10,8 @@ from svgpathtools import parse_path
 from tqdm import tqdm
 from copy import deepcopy
 
+from svg_render.Config.color import COLOR_DICT
+
 
 class Renderer(object):
 
@@ -122,7 +124,7 @@ class Renderer(object):
         point_in_image += self.origin_translate
         point_in_image *= self.scale
         point_in_image += self.post_translate
-        point_in_image = point_in_image.astype(np.uint8)
+        point_in_image = point_in_image.astype(int)
         return point_in_image
 
     def getPointInWorld(self, point_in_image):
@@ -144,8 +146,8 @@ class Renderer(object):
                 start_in_image = self.getPointInImage(start)
                 end_in_image = self.getPointInImage(end)
 
-                cv2.line(self.image, start_in_image, end_in_image, (0, 255, 0),
-                         line_width)
+                cv2.line(self.image, start_in_image, end_in_image,
+                         COLOR_DICT[dtype], line_width)
             elif dtype == 'Arc':
 
                 #  start = [float(segment.start.real), float(segment.start.imag)]
@@ -167,7 +169,8 @@ class Renderer(object):
                         [next_point.real, next_point.imag])
 
                     cv2.line(self.image, current_point_in_image,
-                             next_point_in_image, (0, 0, 255), line_width)
+                             next_point_in_image, COLOR_DICT[dtype],
+                             line_width)
 
                     current_point_in_image = next_point_in_image
             elif dtype == 'Circle':
@@ -178,7 +181,7 @@ class Renderer(object):
                 center_in_image = self.getPointInImage([cx, cy])
                 r_in_image = int(r * self.scale)
                 cv2.circle(self.image, center_in_image, r_in_image,
-                           (0, 255, 0), line_width)
+                           COLOR_DICT[dtype], line_width)
             elif dtype == 'Ellipse':
                 cx = float(segment.attrib['cx'])
                 cy = float(segment.attrib['cy'])
@@ -187,7 +190,7 @@ class Renderer(object):
 
                 center_in_image = self.getPointInImage([cx, cy])
                 cv2.ellipse(self.image, center_in_image,
-                            [int(rx), int(ry)], 0, 0, 360, (255, 0, 0),
+                            [int(rx), int(ry)], 0, 0, 360, COLOR_DICT[dtype],
                             line_width)
             else:
                 print("[WARN][Renderer::render]")
