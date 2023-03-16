@@ -48,6 +48,9 @@ class Renderer(object):
 
     def getPointInWorld(self, point_in_image):
         point_in_world = np.array(deepcopy(point_in_image), dtype=float)
+        point_in_world -= self.post_translate
+        point_in_world /= self.scale
+        point_in_world -= self.origin_translate
         return point_in_world
 
     def getImage(self, svg_data):
