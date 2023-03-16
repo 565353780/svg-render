@@ -3,17 +3,17 @@
 
 import os
 import xml.etree.ElementTree as ET
+from copy import deepcopy
 
 import cv2
 import numpy as np
 from svgpathtools import parse_path
 from tqdm import tqdm
-from copy import deepcopy
 
 from svg_render.Config.color import COLOR_DICT
 
-render_mode_list = ['all', 'semantic', 'instance']
-render_mode = 'all'
+render_mode_list = ['type', 'semantic', 'instance']
+render_mode = 'type'
 
 
 class Renderer(object):
@@ -137,81 +137,102 @@ class Renderer(object):
         point_in_world -= self.origin_translate
         return point_in_world
 
-    def updateImageByRenderAll(self, svg_data, line_width=1):
-        self.updateTransform(svg_data)
+    def renderLine(self, line, color, line_width):
+        start = [line.start.real, line.start.imag]
+        end = [line.end.real, line.end.imag]
+        start_in_image = self.getPointInImage(start)
+        end_in_image = self.getPointInImage(end)
 
-        for segment, dtype, semantic_id, instance_id in zip(
-                svg_data['segment_list'], svg_data['dtype_list'],
-                svg_data['semantic_id_list'], svg_data['instance_id_list']):
-            if dtype == 'Line':
-                start = [segment.start.real, segment.start.imag]
-                end = [segment.end.real, segment.end.imag]
-                start_in_image = self.getPointInImage(start)
-                end_in_image = self.getPointInImage(end)
+        cv2.line(self.image, start_in_image, end_in_image, color, line_width)
+        return True
 
-                cv2.line(self.image, start_in_image, end_in_image,
-                         COLOR_DICT[dtype], line_width)
-            elif dtype == 'Arc':
+    def renderArc(self, arc, color, line_width):
+        #  start = [float(arc.start.real), float(arc.start.imag)]
+        #  end = [float(arc.end.real), float(arc.end.imag)]
+        #  rotation = float(arc.rotation)
+        #  large_arc = arc.large_arc
+        #  sweep = arc.sweep
 
-                #  start = [float(segment.start.real), float(segment.start.imag)]
-                #  end = [float(segment.end.real), float(segment.end.imag)]
-                #  rotation = float(segment.rotation)
-                #  large_arc = segment.large_arc
-                #  sweep = segment.sweep
+        pixel_width = int(
+            max(arc.radius.real * self.scale,
+                arc.radius.imag * self.scale)) + 2
 
-                pixel_width = int(
-                    max(segment.radius.real * self.scale,
-                        segment.radius.imag * self.scale)) + 2
+        current_point = arc.point(0)
+        current_point_in_image = self.getPointInImage(
+            [current_point.real, current_point.imag])
+        for i in range(1, pixel_width + 1):
+            next_point = arc.point(1.0 * i / pixel_width)
+            next_point_in_image = self.getPointInImage(
+                [next_point.real, next_point.imag])
 
-                current_point = segment.point(0)
-                current_point_in_image = self.getPointInImage(
-                    [current_point.real, current_point.imag])
-                for i in range(1, pixel_width + 1):
-                    next_point = segment.point(1.0 * i / pixel_width)
-                    next_point_in_image = self.getPointInImage(
-                        [next_point.real, next_point.imag])
+            cv2.line(self.image, current_point_in_image, next_point_in_image,
+                     color, line_width)
 
-                    cv2.line(self.image, current_point_in_image,
-                             next_point_in_image, COLOR_DICT[dtype],
-                             line_width)
+            current_point_in_image = next_point_in_image
+        return True
 
-                    current_point_in_image = next_point_in_image
-            elif dtype == 'Circle':
-                cx = float(segment.attrib['cx'])
-                cy = float(segment.attrib['cy'])
-                r = float(segment.attrib['r'])
+    def renderCircle(self, circle, color, line_width):
+        cx = float(circle.attrib['cx'])
+        cy = float(circle.attrib['cy'])
+        r = float(circle.attrib['r'])
 
-                center_in_image = self.getPointInImage([cx, cy])
-                r_in_image = int(r * self.scale)
-                cv2.circle(self.image, center_in_image, r_in_image,
-                           COLOR_DICT[dtype], line_width)
-            elif dtype == 'Ellipse':
-                cx = float(segment.attrib['cx'])
-                cy = float(segment.attrib['cy'])
-                rx = float(segment.attrib['rx'])
-                ry = float(segment.attrib['ry'])
+        center_in_image = self.getPointInImage([cx, cy])
+        r_in_image = int(r * self.scale)
+        cv2.circle(self.image, center_in_image, r_in_image, color, line_width)
+        return True
 
-                center_in_image = self.getPointInImage([cx, cy])
-                cv2.ellipse(self.image, center_in_image,
-                            [int(rx), int(ry)], 0, 0, 360, COLOR_DICT[dtype],
-                            line_width)
-            else:
-                print("[WARN][Renderer::render]")
-                print("\t can not solve this segment with type [" + dtype +
-                      "]!")
+    def renderEllipse(self, ellipse, color, line_width):
+        cx = float(ellipse.attrib['cx'])
+        cy = float(ellipse.attrib['cy'])
+        rx = float(ellipse.attrib['rx'])
+        ry = float(ellipse.attrib['ry'])
+
+        center_in_image = self.getPointInImage([cx, cy])
+        cv2.ellipse(self.image, center_in_image, [int(rx), int(ry)], 0, 0, 360,
+                    color, line_width)
+        return True
+
+    def renderSegment(self, segment, dtype, color, line_width):
+        if dtype == 'Line':
+            return self.renderLine(segment, color, line_width)
+        if dtype == 'Arc':
+            return self.renderArc(segment, color, line_width)
+        if dtype == 'Circle':
+            return self.renderCircle(segment, color, line_width)
+        if dtype == 'Ellipse':
+            return self.renderEllipse(segment, color, line_width)
+
+        print("[WARN][Renderer::renderSegment]")
+        print("\t can not solve this segment with type [" + dtype + "]!")
+        return False
+
+    def updateImageByRenderType(self, svg_data, line_width=1):
+        for segment, dtype in zip(svg_data['segment_list'],
+                                  svg_data['dtype_list']):
+            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
         return True
 
     def updateImageByRenderSemantic(self, svg_data, line_width=1):
+        for segment, dtype, semantic_id in zip(svg_data['segment_list'],
+                                               svg_data['dtype_list'],
+                                               svg_data['semantic_id_list']):
+            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
         return True
 
     def updateImageByRenderInstance(self, svg_data, line_width=1):
+        for segment, dtype, instance_id in zip(svg_data['segment_list'],
+                                               svg_data['dtype_list'],
+                                               svg_data['instance_id_list']):
+            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
         return True
 
     def updateImage(self, svg_data, line_width=1):
+        self.updateTransform(svg_data)
+
         assert render_mode in render_mode_list
 
-        if render_mode == 'all':
-            return self.updateImageByRenderAll(svg_data, line_width)
+        if render_mode == 'type':
+            return self.updateImageByRenderType(svg_data, line_width)
         elif render_mode == 'semantic':
             return self.updateImageByRenderSemantic(svg_data, line_width)
         elif render_mode == 'instance':
