@@ -66,7 +66,7 @@ class Renderer(object):
         point_in_world -= self.origin_translate
         return point_in_world
 
-    def updateImage(self, svg_data, line_width=3):
+    def updateImage(self, svg_data, line_width=1):
         min_x, min_y, view_width, view_height = svg_data['view_box']
         self.updateTransform([min_x, min_y], [view_width, view_height])
 
