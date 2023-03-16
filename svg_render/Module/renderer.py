@@ -23,10 +23,23 @@ class Renderer(object):
         self.post_translate = np.array([self.width / 2.0, self.height / 2.0],
                                        dtype=float)
 
-        self.image = None
+        self.resetImage()
         return
 
+    def reset(self):
+        self.origin_translate = None
+        self.scale = None
+
+        self.resetImage()
+        return True
+
+    def resetImage(self):
+        self.image = np.zeros([self.width, self.height, 3], dtype=np.uint8)
+        return True
+
     def updateTransform(self, view_box_start, view_box_size):
+        self.reset()
+
         self.origin_translate = np.array([
             -view_box_start[0] - view_box_size[0] / 2.0,
             -view_box_start[1] - view_box_size[1] / 2.0
@@ -53,61 +66,75 @@ class Renderer(object):
         point_in_world -= self.origin_translate
         return point_in_world
 
-    def getImage(self, svg_data):
-        image = np.zeros([width, height, 3], dtype=np.uint8)
-
+    def updateImage(self, svg_data, line_width=3):
         min_x, min_y, view_width, view_height = svg_data['view_box']
-
         self.updateTransform([min_x, min_y], [view_width, view_height])
 
         for segment, dtype, semantic_id, instance_id in zip(
                 svg_data['segment_list'], svg_data['dtype_list'],
                 svg_data['semantic_id_list'], svg_data['instance_id_list']):
             if dtype == 'Line':
-                start = [float(segment.start.real), float(segment.start.imag)]
-                end = [float(segment.end.real), float(segment.end.imag)]
-                print("====Line====")
-                print(start)
-                print(end)
+                start = [segment.start.real, segment.start.imag]
+                end = [segment.end.real, segment.end.imag]
+                start_in_image = self.getPointInImage(start)
+                end_in_image = self.getPointInImage(end)
+
+                cv2.line(self.image, start_in_image, end_in_image, (0, 255, 0),
+                         line_width)
             elif dtype == 'Arc':
-                start = [float(segment.start.real), float(segment.start.imag)]
-                end = [float(segment.end.real), float(segment.end.imag)]
-                radius = [
-                    float(segment.radius.real),
-                    float(segment.radius.imag)
-                ]
-                rotation = float(segment.rotation)
-                large_arc = segment.large_arc
-                sweep = segment.sweep
-                print("====Arc====")
-                print(start)
-                print(end)
-                print(radius)
-                print(rotation)
-                print(large_arc)
-                print(sweep)
-                print("iter points ...")
-                for i in range(11):
-                    print(segment.point(1.0 * i / 10.0))
-                exit()
+
+                #  start = [float(segment.start.real), float(segment.start.imag)]
+                #  end = [float(segment.end.real), float(segment.end.imag)]
+                #  rotation = float(segment.rotation)
+                #  large_arc = segment.large_arc
+                #  sweep = segment.sweep
+
+                pixel_width = int(
+                    max(segment.radius.real * self.scale,
+                        segment.radius.imag * self.scale)) + 2
+
+                current_point = segment.point(0)
+                current_point_in_image = self.getPointInImage(
+                    [current_point.real, current_point.imag])
+                for i in range(1, pixel_width + 1):
+                    next_point = segment.point(1.0 * i / pixel_width)
+                    next_point_in_image = self.getPointInImage(
+                        [next_point.real, next_point.imag])
+
+                    cv2.line(self.image, current_point_in_image,
+                             next_point_in_image, (0, 0, 255), line_width)
+
+                    current_point_in_image = next_point_in_image
             elif dtype == 'Circle':
                 cx = float(segment.attrib['cx'])
                 cy = float(segment.attrib['cy'])
                 r = float(segment.attrib['r'])
+
+                center_in_image = self.getPointInImage([cx, cy])
+                r_in_image = int(r * self.scale)
+                cv2.circle(self.image, center_in_image, r_in_image,
+                           (0, 255, 0), line_width)
             elif dtype == 'Ellipse':
-                cx = float(ellipse.attrib['cx'])
-                cy = float(ellipse.attrib['cy'])
-                rx = float(ellipse.attrib['rx'])
-                ry = float(ellipse.attrib['ry'])
+                cx = float(segment.attrib['cx'])
+                cy = float(segment.attrib['cy'])
+                rx = float(segment.attrib['rx'])
+                ry = float(segment.attrib['ry'])
+
+                center_in_image = self.getPointInImage([cx, cy])
+                cv2.ellipse(self.image, center_in_image,
+                            [int(rx), int(ry)], 0, 0, 360, (255, 0, 0),
+                            line_width)
             else:
                 print("[WARN][Renderer::render]")
                 print("\t can not solve this segment with type [" + dtype +
                       "]!")
-        return image
+        return True
 
     def render(self, svg_data):
-        image = self.getImage(svg_data)
+        self.updateImage(svg_data)
 
+        cv2.imshow("[Renderer][image]", self.image)
+        cv2.waitKey(0)
         return True
 
     def renderFile(self, svg_file_path, print_progress=False):
