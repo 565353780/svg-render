@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import os
+import xml.etree.ElementTree as ET
+from tqdm import tqdm
+from copy import deepcopy
+
 import cv2
 import numpy as np
-import xml.etree.ElementTree as ET
-from copy import deepcopy
-from svgpathtools import parse_path
+from svgpathtools import Arc, Line, parse_path
 
 
 class Renderer(object):
@@ -15,9 +17,33 @@ class Renderer(object):
         return
 
     def render(self, svg_data):
+        for segment, dtype, semantic_id, instance_id in zip(
+                svg_data['segment_list'], svg_data['dtype_list'],
+                svg_data['semantic_id_list'], svg_data['instance_id_list']):
+            if dtype == 'Line':
+                start = [float(segment.start.real), float(segment.start.imag)]
+                end = [float(segment.end.real), float(segment.end.imag)]
+                print(start)
+                print(end)
+                exit()
+            elif dtype == 'Arc':
+                exit()
+            elif dtype == 'Circle':
+                cx = float(segment.attrib['cx'])
+                cy = float(segment.attrib['cy'])
+                r = float(segment.attrib['r'])
+            elif dtype == 'Ellipse':
+                cx = float(ellipse.attrib['cx'])
+                cy = float(ellipse.attrib['cy'])
+                rx = float(ellipse.attrib['rx'])
+                ry = float(ellipse.attrib['ry'])
+            else:
+                print("[WARN][Renderer::render]")
+                print("\t can not solve this segment with type [" + dtype +
+                      "]!")
         return True
 
-    def renderFile(self, svg_file_path):
+    def renderFile(self, svg_file_path, print_progress=False):
         assert os.path.exists(svg_file_path)
 
         tree = ET.parse(svg_file_path)
@@ -25,69 +51,71 @@ class Renderer(object):
         root = tree.getroot()
         ns = root.tag[:-3]
 
+        svg_data = {
+            'segment_list': [],
+            'dtype_list': [],
+            'semantic_id_list': [],
+            'instance_id_list': [],
+        }
+
+        if print_progress:
+            print("[INFO][Renderer::renderFile]")
+            print("\t start loading data...")
+            total_num = 0
+            for g in root.iter(ns + 'g'):
+                total_num += len(list(g.iter(ns + 'path')))
+                total_num += len(list(g.iter(ns + 'circle')))
+                total_num += len(list(g.iter(ns + 'ellipse')))
+            pbar = tqdm(total=total_num)
         for g in root.iter(ns + 'g'):
             for path in g.iter(ns + 'path'):
-                print(path)
-                continue
-                path_repre = parse_path(path.attrib['d'])
-                start = path_repre.point(0)
-                end = path_repre.point(1)
-                segments.append([start.real, start.imag, end.real, end.imag])
-                # starts_ends.append([start.real, start.imag, end.real, end.imag, end.real, end.imag, start.real, start.imag])
-                mid = path_repre.point(0.5)
-                # length = math.sqrt((start.real - end.real) ** 2 + (start.imag - end.imag) ** 2)
-                length = path_repre.length()
-                nodes.append([
-                    length / width, (mid.real - minx) / width,
-                    (mid.imag - miny) / height, 1, 0, 0
-                ])
-                centers.append([mid.real, mid.imag])
+                semantic_id = 0
+                instance_id = -1
                 if 'semantic-id' in path.attrib:
                     semantic_id = int(path.attrib['semantic-id'])
-                else:
-                    semantic_id = 0
                 if 'instance-id' in path.attrib:
                     instance_id = int(path.attrib['instance-id'])
-                else:
-                    instance_id = -1
-            return
-            # circle
+
+                path_repre = parse_path(path.attrib['d'])
+                for segment in path_repre:
+                    svg_data['segment_list'].append(segment)
+                    svg_data['dtype_list'].append(segment.__class__.__name__)
+                    svg_data['semantic_id_list'].append(semantic_id)
+                    svg_data['instance_id_list'].append(instance_id)
+                if print_progress:
+                    pbar.update(1)
+
             for circle in g.iter(ns + 'circle'):
-                cx = float(circle.attrib['cx'])
-                cy = float(circle.attrib['cy'])
-                r = float(circle.attrib['r'])
-                segments.append([cx - r, cy, cx + r, cy])
-                # starts_ends.append([cx - r, cy, cx + r, cy, cx + r, cy, cx - r, cy])
-                nodes.append([
-                    r * 2.0 / width, (cx - minx) / width, (cy - miny) / height,
-                    0, 1, 0
-                ])
-                centers.append([cx, cy])
+                semantic_id = 0
+                instance_id = -1
                 if 'semantic-id' in circle.attrib:
-                    classes.append([int(circle.attrib['semantic-id'])])
-                else:
-                    classes.append([0])
+                    semantic_id = int(circle.attrib['semantic-id'])
                 if 'instance-id' in circle.attrib:
-                    instances.append([int(circle.attrib['instance-id'])])
-                else:
-                    instances.append([-1])
-            # ellipse
+                    instance_id = int(circle.attrib['instance-id'])
+
+                svg_data['segment_list'].append(circle)
+                svg_data['dtype_list'].append('Circle')
+                svg_data['semantic_id_list'].append(semantic_id)
+                svg_data['instance_id_list'].append(instance_id)
+                if print_progress:
+                    pbar.update(1)
+
             for ellipse in g.iter(ns + 'ellipse'):
-                cx = float(ellipse.attrib['cx'])
-                cy = float(ellipse.attrib['cy'])
-                rx = float(ellipse.attrib['rx'])
-                ry = float(ellipse.attrib['ry'])
-                segments.append([cx - rx, cy, cx + rx, cy])
-                # starts_ends.append([cx - rx, cy, cx + rx, cy, cx + r, cy, cx - r, cy])
-                nodes.append([(rx + ry) / width, (cx - minx) / width,
-                              (cy - miny) / height, 0, 0, 1])
-                centers.append([cx, cy])
+                semantic_id = 0
+                instance_id = -1
                 if 'semantic-id' in ellipse.attrib:
-                    classes.append([int(ellipse.attrib['semantic-id'])])
-                else:
-                    classes.append([0])
+                    semantic_id = int(ellipse.attrib['semantic-id'])
                 if 'instance-id' in ellipse.attrib:
-                    instances.append([int(ellipse.attrib['instance-id'])])
-                else:
-                    instances.append([-1])
+                    instance_id = int(ellipse.attrib['instance-id'])
+
+                svg_data['segment_list'].append(ellipse)
+                svg_data['dtype_list'].append('Ellipse')
+                svg_data['semantic_id_list'].append(semantic_id)
+                svg_data['instance_id_list'].append(instance_id)
+                if print_progress:
+                    pbar.update(1)
+
+        if print_progress:
+            pbar.close()
+
         return self.render(svg_data)

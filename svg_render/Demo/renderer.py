@@ -6,7 +6,8 @@ from svg_render.Module.renderer import Renderer
 
 def demo():
     svg_file_path = "/home/chli/chLi/FloorPlanCAD/svg/train/0000-0002.svg"
+    print_progress = True
 
     renderer = Renderer()
-    renderer.renderFile(svg_file_path)
+    renderer.renderFile(svg_file_path, print_progress)
     return True
