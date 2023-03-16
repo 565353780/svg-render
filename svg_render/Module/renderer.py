@@ -198,14 +198,14 @@ class Renderer(object):
                       "]!")
         return True
 
-    def render(self, svg_data):
-        self.updateImage(svg_data)
+    def render(self, svg_data, line_width=1):
+        self.updateImage(svg_data, line_width)
 
         cv2.imshow("[Renderer][image]", self.image)
         cv2.waitKey(0)
         return True
 
-    def renderFile(self, svg_file_path, print_progress=False):
+    def renderFile(self, svg_file_path, line_width=1, print_progress=False):
         assert os.path.exists(svg_file_path)
 
         svg_data = {
@@ -285,4 +285,4 @@ class Renderer(object):
         if print_progress:
             pbar.close()
 
-        return self.render(svg_data)
+        return self.render(svg_data, line_width)
