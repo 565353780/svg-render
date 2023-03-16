@@ -12,6 +12,9 @@ from copy import deepcopy
 
 from svg_render.Config.color import COLOR_DICT
 
+render_mode_list = ['all', 'semantic', 'instance']
+render_mode = 'all'
+
 
 class Renderer(object):
 
@@ -134,7 +137,7 @@ class Renderer(object):
         point_in_world -= self.origin_translate
         return point_in_world
 
-    def updateImage(self, svg_data, line_width=1):
+    def updateImageByRenderAll(self, svg_data, line_width=1):
         self.updateTransform(svg_data)
 
         for segment, dtype, semantic_id, instance_id in zip(
@@ -196,6 +199,23 @@ class Renderer(object):
                 print("[WARN][Renderer::render]")
                 print("\t can not solve this segment with type [" + dtype +
                       "]!")
+        return True
+
+    def updateImageByRenderSemantic(self, svg_data, line_width=1):
+        return True
+
+    def updateImageByRenderInstance(self, svg_data, line_width=1):
+        return True
+
+    def updateImage(self, svg_data, line_width=1):
+        assert render_mode in render_mode_list
+
+        if render_mode == 'all':
+            return self.updateImageByRenderAll(svg_data, line_width)
+        elif render_mode == 'semantic':
+            return self.updateImageByRenderSemantic(svg_data, line_width)
+        elif render_mode == 'instance':
+            return self.updateImageByRenderInstance(svg_data, line_width)
         return True
 
     def render(self, svg_data, line_width=1):
