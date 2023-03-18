@@ -23,7 +23,8 @@ class Renderer(object):
                  height=1080,
                  free_width=50,
                  render_width=2560,
-                 render_height=1440):
+                 render_height=1440,
+                 text_size=1):
         self.width = width
         self.height = height
         self.free_width = free_width
@@ -44,6 +45,9 @@ class Renderer(object):
         self.resetImage()
 
         self.image_list = []
+        self.text_color = [0, 0, 255]
+        self.text_size = text_size
+        self.text_line_width = 1
         return
 
     def reset(self):
@@ -147,19 +151,37 @@ class Renderer(object):
         point_in_world -= self.origin_translate
         return point_in_world
 
-    def renderLine(self, line, color, line_width):
+    def renderLine(self,
+                   line,
+                   color,
+                   line_width,
+                   put_text=None,
+                   text_color=[0, 0, 255],
+                   text_size=1,
+                   text_line_width=1):
         start = [line.start.real, line.start.imag]
         end = [line.end.real, line.end.imag]
         start_in_image = self.getPointInImage(start)
         end_in_image = self.getPointInImage(end)
 
         cv2.line(self.image, start_in_image, end_in_image, color, line_width)
+
+        if put_text is not None:
+            cv2.putText(self.image, put_text[0],
+                        ((start_in_image + end_in_image) / 2.0).astype(int),
+                        cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
+                        text_line_width)
         return True
 
-    def renderArc(self, arc, color, line_width):
-        #  start = [float(arc.start.real), float(arc.start.imag)]
-        #  end = [float(arc.end.real), float(arc.end.imag)]
-        #  rotation = float(arc.rotation)
+    def renderArc(self,
+                  arc,
+                  color,
+                  line_width,
+                  put_text=None,
+                  text_color=[0, 0, 255],
+                  text_size=1,
+                  text_line_width=1):
+        #  rotation = arc.rotation
         #  large_arc = arc.large_arc
         #  sweep = arc.sweep
 
@@ -179,9 +201,26 @@ class Renderer(object):
                      color, line_width)
 
             current_point_in_image = next_point_in_image
+
+        if put_text is not None:
+            start = [arc.start.real, arc.start.imag]
+            end = [arc.end.real, arc.end.imag]
+            start_in_image = self.getPointInImage(start)
+            end_in_image = self.getPointInImage(end)
+            cv2.putText(self.image, put_text[0],
+                        ((start_in_image + end_in_image) / 2.0).astype(int),
+                        cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
+                        text_line_width)
         return True
 
-    def renderCircle(self, circle, color, line_width):
+    def renderCircle(self,
+                     circle,
+                     color,
+                     line_width,
+                     put_text=None,
+                     text_color=[0, 0, 255],
+                     text_size=1,
+                     text_line_width=1):
         cx = float(circle.attrib['cx'])
         cy = float(circle.attrib['cy'])
         r = float(circle.attrib['r'])
@@ -189,9 +228,21 @@ class Renderer(object):
         center_in_image = self.getPointInImage([cx, cy])
         r_in_image = int(r * self.scale)
         cv2.circle(self.image, center_in_image, r_in_image, color, line_width)
+
+        if put_text is not None:
+            cv2.putText(self.image, put_text[0], center_in_image,
+                        cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
+                        text_line_width)
         return True
 
-    def renderEllipse(self, ellipse, color, line_width):
+    def renderEllipse(self,
+                      ellipse,
+                      color,
+                      line_width,
+                      put_text=None,
+                      text_color=[0, 0, 255],
+                      text_size=1,
+                      text_line_width=1):
         cx = float(ellipse.attrib['cx'])
         cy = float(ellipse.attrib['cy'])
         rx = float(ellipse.attrib['rx'])
@@ -200,17 +251,34 @@ class Renderer(object):
         center_in_image = self.getPointInImage([cx, cy])
         cv2.ellipse(self.image, center_in_image, [int(rx), int(ry)], 0, 0, 360,
                     color, line_width)
+
+        if put_text is not None:
+            cv2.putText(self.image, put_text[0], center_in_image,
+                        cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
+                        text_line_width)
         return True
 
-    def renderSegment(self, segment, dtype, color, line_width):
+    def renderSegment(self,
+                      segment,
+                      dtype,
+                      color,
+                      line_width,
+                      put_text=None,
+                      text_color=[0, 0, 255],
+                      text_size=1,
+                      text_line_width=1):
         if dtype == 'Line':
-            return self.renderLine(segment, color, line_width)
+            return self.renderLine(segment, color, line_width, put_text,
+                                   text_color, text_size, text_line_width)
         if dtype == 'Arc':
-            return self.renderArc(segment, color, line_width)
+            return self.renderArc(segment, color, line_width, put_text,
+                                  text_color, text_size, text_line_width)
         if dtype == 'Circle':
-            return self.renderCircle(segment, color, line_width)
+            return self.renderCircle(segment, color, line_width, put_text,
+                                     text_color, text_size, text_line_width)
         if dtype == 'Ellipse':
-            return self.renderEllipse(segment, color, line_width)
+            return self.renderEllipse(segment, color, line_width, put_text,
+                                      text_color, text_size, text_line_width)
 
         print("[WARN][Renderer::renderSegment]")
         print("\t can not solve this segment with type [" + dtype + "]!")
@@ -219,10 +287,14 @@ class Renderer(object):
     def updateImageByRenderType(self,
                                 svg_data,
                                 line_width=1,
-                                save_into_list=False):
+                                save_into_list=False,
+                                text_color=[0, 0, 255],
+                                text_size=1,
+                                text_line_width=1):
         for segment, dtype in zip(svg_data['segment_list'],
                                   svg_data['dtype_list']):
-            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
+            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width,
+                               dtype, text_color, text_size, text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -231,10 +303,10 @@ class Renderer(object):
     def updateImageByRenderSemantic(self,
                                     svg_data,
                                     line_width=1,
-                                    save_into_list=False):
-        render_semantic_idx_list = [33, 34]
-        render_semantic_idx_list = range(1, 36)
-
+                                    save_into_list=False,
+                                    text_color=[0, 0, 255],
+                                    text_size=1,
+                                    text_line_width=1):
         unit_semantic_idx_list = sorted(list(set(
             svg_data['semantic_id_list'])))
         semantic_color_dict = {}
@@ -250,11 +322,10 @@ class Renderer(object):
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['semantic_id_list']):
-            if semantic_id not in render_semantic_idx_list:
-                continue
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
-                               line_width)
+                               line_width, str(semantic_id), text_color,
+                               text_size, text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -263,7 +334,10 @@ class Renderer(object):
     def updateImageByRenderInstance(self,
                                     svg_data,
                                     line_width=1,
-                                    save_into_list=False):
+                                    save_into_list=False,
+                                    text_color=[0, 0, 255],
+                                    text_size=1,
+                                    text_line_width=1):
         unit_instance_idx_list = sorted(list(set(
             svg_data['instance_id_list'])))
         instance_color_dict = {}
@@ -281,7 +355,8 @@ class Renderer(object):
                                                svg_data['instance_id_list']):
             self.renderSegment(segment, dtype,
                                instance_color_dict[str(instance_id)],
-                               line_width)
+                               line_width, str(instance_id), text_color,
+                               text_size, text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -291,35 +366,46 @@ class Renderer(object):
                     svg_data,
                     render_mode='type',
                     line_width=1,
+                    text_color=[0, 0, 255],
+                    text_size=1,
+                    text_line_width=1,
                     save_into_list=False):
         self.updateTransform(svg_data)
 
         if '+' in render_mode:
             sub_render_mode_list = render_mode.split('+')
             for sub_render_mode in sub_render_mode_list:
-                self.updateImage(svg_data, sub_render_mode, line_width, True)
+                self.updateImage(svg_data, sub_render_mode, line_width,
+                                 text_color, text_size, text_line_width, True)
             return True
 
         assert render_mode in render_mode_list
 
         if render_mode == 'type':
             return self.updateImageByRenderType(svg_data, line_width,
-                                                save_into_list)
+                                                save_into_list, text_color,
+                                                text_size, text_line_width)
         elif render_mode == 'semantic':
             return self.updateImageByRenderSemantic(svg_data, line_width,
-                                                    save_into_list)
+                                                    save_into_list, text_color,
+                                                    text_size, text_line_width)
         elif render_mode == 'instance':
             return self.updateImageByRenderInstance(svg_data, line_width,
-                                                    save_into_list)
+                                                    save_into_list, text_color,
+                                                    text_size, text_line_width)
         return True
 
     def render(self,
                svg_data,
                line_width=1,
+               text_color=[0, 0, 255],
+               text_size=1,
+               text_line_width=1,
                window_name="[Renderer][" + render_mode + "]"):
         self.image_list = []
 
-        self.updateImage(svg_data, render_mode, line_width)
+        self.updateImage(svg_data, render_mode, line_width, text_color,
+                         text_size, text_line_width)
 
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.render_width, self.render_height)
@@ -334,7 +420,13 @@ class Renderer(object):
         cv2.waitKey(0)
         return True
 
-    def renderFile(self, svg_file_path, line_width=1, print_progress=False):
+    def renderFile(self,
+                   svg_file_path,
+                   line_width=1,
+                   text_color=[0, 0, 255],
+                   text_size=1,
+                   text_line_width=1,
+                   print_progress=False):
         assert os.path.exists(svg_file_path)
 
         svg_data = {
@@ -414,4 +506,5 @@ class Renderer(object):
         if print_progress:
             pbar.close()
 
-        return self.render(svg_data, line_width)
+        return self.render(svg_data, line_width, text_color, text_size,
+                           text_line_width)
