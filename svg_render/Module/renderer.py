@@ -12,8 +12,8 @@ from tqdm import tqdm
 
 from svg_render.Config.color import COLOR_DICT
 
-render_mode_list = ['type', 'semantic', 'instance']
-render_mode = 'type+semantic'
+render_mode_list = ['type', 'semantic', 'selected_semantic', 'instance']
+render_mode = 'type+semantic+selected_semantic'
 
 
 class Renderer(object):
@@ -85,9 +85,9 @@ class Renderer(object):
                 self.addPoint(start)
                 self.addPoint(end)
             elif dtype == 'Arc':
-                #  start = [float(segment.start.real), float(segment.start.imag)]
-                #  end = [float(segment.end.real), float(segment.end.imag)]
-                #  rotation = float(segment.rotation)
+                #  start = [segment.start.real, segment.start.imag]
+                #  end = [segment.end.real, segment.end.imag]
+                #  rotation = segment.rotation
                 #  large_arc = segment.large_arc
                 #  sweep = segment.sweep
 
@@ -167,7 +167,7 @@ class Renderer(object):
         cv2.line(self.image, start_in_image, end_in_image, color, line_width)
 
         if put_text is not None:
-            cv2.putText(self.image, put_text[0],
+            cv2.putText(self.image, put_text,
                         ((start_in_image + end_in_image) / 2.0).astype(int),
                         cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
                         text_line_width)
@@ -207,7 +207,7 @@ class Renderer(object):
             end = [arc.end.real, arc.end.imag]
             start_in_image = self.getPointInImage(start)
             end_in_image = self.getPointInImage(end)
-            cv2.putText(self.image, put_text[0],
+            cv2.putText(self.image, put_text,
                         ((start_in_image + end_in_image) / 2.0).astype(int),
                         cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
                         text_line_width)
@@ -230,7 +230,7 @@ class Renderer(object):
         cv2.circle(self.image, center_in_image, r_in_image, color, line_width)
 
         if put_text is not None:
-            cv2.putText(self.image, put_text[0], center_in_image,
+            cv2.putText(self.image, put_text, center_in_image,
                         cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
                         text_line_width)
         return True
@@ -253,7 +253,7 @@ class Renderer(object):
                     color, line_width)
 
         if put_text is not None:
-            cv2.putText(self.image, put_text[0], center_in_image,
+            cv2.putText(self.image, put_text, center_in_image,
                         cv2.FONT_HERSHEY_COMPLEX, text_size, text_color,
                         text_line_width)
         return True
@@ -294,7 +294,8 @@ class Renderer(object):
         for segment, dtype in zip(svg_data['segment_list'],
                                   svg_data['dtype_list']):
             self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width,
-                               dtype, text_color, text_size, text_line_width)
+                               dtype[0], text_color, text_size,
+                               text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -323,6 +324,40 @@ class Renderer(object):
                                                svg_data['dtype_list'],
                                                svg_data['semantic_id_list']):
             if semantic_id == 0:
+                continue
+            self.renderSegment(segment, dtype,
+                               semantic_color_dict[str(semantic_id)],
+                               line_width, str(semantic_id), text_color,
+                               text_size, text_line_width)
+
+        if save_into_list:
+            self.image_list.append(deepcopy(self.image))
+        return True
+
+    def updateImageByRenderSelectedSemantic(self,
+                                            svg_data,
+                                            line_width=1,
+                                            save_into_list=False,
+                                            text_color=[0, 0, 255],
+                                            text_size=1,
+                                            text_line_width=1):
+        render_semantic_idx_list = [0, 1, 3, 9, 33]
+        unit_semantic_idx_list = sorted(list(set(
+            svg_data['semantic_id_list'])))
+        semantic_color_dict = {}
+        for unit_semantic_idx in unit_semantic_idx_list:
+            semantic_color_dict[str(unit_semantic_idx)] = np.array(
+                [
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255)
+                ],
+                dtype=np.uint8).tolist()
+
+        for segment, dtype, semantic_id in zip(svg_data['segment_list'],
+                                               svg_data['dtype_list'],
+                                               svg_data['semantic_id_list']):
+            if semantic_id not in render_semantic_idx_list:
                 continue
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
@@ -393,6 +428,10 @@ class Renderer(object):
             return self.updateImageByRenderSemantic(svg_data, line_width,
                                                     save_into_list, text_color,
                                                     text_size, text_line_width)
+        elif render_mode == 'selected_semantic':
+            return self.updateImageByRenderSelectedSemantic(
+                svg_data, line_width, save_into_list, text_color, text_size,
+                text_line_width)
         elif render_mode == 'instance':
             return self.updateImageByRenderInstance(svg_data, line_width,
                                                     save_into_list, text_color,
