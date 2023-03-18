@@ -237,15 +237,24 @@ class Renderer(object):
 
         unit_semantic_idx_list = sorted(list(set(
             svg_data['semantic_id_list'])))
-        print(unit_semantic_idx_list)
         semantic_color_dict = {}
+        for unit_semantic_idx in unit_semantic_idx_list:
+            semantic_color_dict[str(unit_semantic_idx)] = np.array(
+                [
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255)
+                ],
+                dtype=np.uint8).tolist()
 
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['semantic_id_list']):
             if semantic_id not in render_semantic_idx_list:
                 continue
-            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
+            self.renderSegment(segment, dtype,
+                               semantic_color_dict[str(semantic_id)],
+                               line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
