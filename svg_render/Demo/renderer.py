@@ -11,7 +11,7 @@ def demo():
     free_width = 50
     render_width = 2560
     render_height = 1440
-    line_width = 1
+    line_width = 3
     text_color = [0, 0, 255]
     text_size = 1
     text_line_width = 1
