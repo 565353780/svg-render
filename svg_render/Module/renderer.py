@@ -13,15 +13,22 @@ from tqdm import tqdm
 from svg_render.Config.color import COLOR_DICT
 
 render_mode_list = ['type', 'semantic', 'instance']
-render_mode = 'type'
+render_mode = 'type+semantic'
 
 
 class Renderer(object):
 
-    def __init__(self, width=1440, height=900, free_width=50):
+    def __init__(self,
+                 width=1920,
+                 height=1080,
+                 free_width=50,
+                 render_width=2560,
+                 render_height=1440):
         self.width = width
         self.height = height
         self.free_width = free_width
+        self.render_width = render_width
+        self.render_height = render_height
 
         self.x_min = float('inf')
         self.y_min = float('inf')
@@ -33,7 +40,10 @@ class Renderer(object):
         self.post_translate = np.array([self.width / 2.0, self.height / 2.0],
                                        dtype=float)
 
+        self.image = None
         self.resetImage()
+
+        self.image_list = []
         return
 
     def reset(self):
@@ -206,43 +216,98 @@ class Renderer(object):
         print("\t can not solve this segment with type [" + dtype + "]!")
         return False
 
-    def updateImageByRenderType(self, svg_data, line_width=1):
+    def updateImageByRenderType(self,
+                                svg_data,
+                                line_width=1,
+                                save_into_list=False):
         for segment, dtype in zip(svg_data['segment_list'],
                                   svg_data['dtype_list']):
             self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
+
+        if save_into_list:
+            self.image_list.append(deepcopy(self.image))
         return True
 
-    def updateImageByRenderSemantic(self, svg_data, line_width=1):
+    def updateImageByRenderSemantic(self,
+                                    svg_data,
+                                    line_width=1,
+                                    save_into_list=False):
+        render_semantic_idx_list = [33, 34]
+        render_semantic_idx_list = range(1, 36)
+
+        unit_semantic_idx_list = sorted(list(set(
+            svg_data['semantic_id_list'])))
+        print(unit_semantic_idx_list)
+        semantic_color_dict = {}
+
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['semantic_id_list']):
+            if semantic_id not in render_semantic_idx_list:
+                continue
             self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
+
+        if save_into_list:
+            self.image_list.append(deepcopy(self.image))
         return True
 
-    def updateImageByRenderInstance(self, svg_data, line_width=1):
+    def updateImageByRenderInstance(self,
+                                    svg_data,
+                                    line_width=1,
+                                    save_into_list=False):
         for segment, dtype, instance_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['instance_id_list']):
             self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
+
+        if save_into_list:
+            self.image_list.append(deepcopy(self.image))
         return True
 
-    def updateImage(self, svg_data, line_width=1):
+    def updateImage(self,
+                    svg_data,
+                    render_mode='type',
+                    line_width=1,
+                    save_into_list=False):
         self.updateTransform(svg_data)
+
+        if '+' in render_mode:
+            sub_render_mode_list = render_mode.split('+')
+            for sub_render_mode in sub_render_mode_list:
+                self.updateImage(svg_data, sub_render_mode, line_width, True)
+            return True
 
         assert render_mode in render_mode_list
 
         if render_mode == 'type':
-            return self.updateImageByRenderType(svg_data, line_width)
+            return self.updateImageByRenderType(svg_data, line_width,
+                                                save_into_list)
         elif render_mode == 'semantic':
-            return self.updateImageByRenderSemantic(svg_data, line_width)
+            return self.updateImageByRenderSemantic(svg_data, line_width,
+                                                    save_into_list)
         elif render_mode == 'instance':
-            return self.updateImageByRenderInstance(svg_data, line_width)
+            return self.updateImageByRenderInstance(svg_data, line_width,
+                                                    save_into_list)
         return True
 
-    def render(self, svg_data, line_width=1):
-        self.updateImage(svg_data, line_width)
+    def render(self,
+               svg_data,
+               line_width=1,
+               window_name="[Renderer][" + render_mode + "]"):
+        self.image_list = []
 
-        cv2.imshow("[Renderer][image]", self.image)
+        self.updateImage(svg_data, render_mode, line_width)
+
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window_name, self.render_width, self.render_height)
+
+        if len(self.image_list) == 0:
+            cv2.imshow(window_name, self.image)
+            cv2.waitKey(0)
+            return True
+
+        render_image = np.hstack(self.image_list)
+        cv2.imshow(window_name, render_image)
         cv2.waitKey(0)
         return True
 
