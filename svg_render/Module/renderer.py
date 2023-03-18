@@ -322,6 +322,8 @@ class Renderer(object):
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['semantic_id_list']):
+            if semantic_id == 0:
+                continue
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
                                line_width, str(semantic_id), text_color,
@@ -353,6 +355,8 @@ class Renderer(object):
         for segment, dtype, instance_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['instance_id_list']):
+            if instance_id == -1:
+                continue
             self.renderSegment(segment, dtype,
                                instance_color_dict[str(instance_id)],
                                line_width, str(instance_id), text_color,
