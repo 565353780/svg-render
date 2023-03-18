@@ -264,10 +264,24 @@ class Renderer(object):
                                     svg_data,
                                     line_width=1,
                                     save_into_list=False):
+        unit_instance_idx_list = sorted(list(set(
+            svg_data['instance_id_list'])))
+        instance_color_dict = {}
+        for unit_instance_idx in unit_instance_idx_list:
+            instance_color_dict[str(unit_instance_idx)] = np.array(
+                [
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255)
+                ],
+                dtype=np.uint8).tolist()
+
         for segment, dtype, instance_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['instance_id_list']):
-            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width)
+            self.renderSegment(segment, dtype,
+                               instance_color_dict[str(instance_id)],
+                               line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
