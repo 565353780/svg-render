@@ -342,6 +342,7 @@ class Renderer(object):
                                             text_size=1,
                                             text_line_width=1):
         render_semantic_idx_list = [0, 1, 3, 9, 33]
+        render_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
         unit_semantic_idx_list = sorted(list(set(
             svg_data['semantic_id_list'])))
         semantic_color_dict = {}
