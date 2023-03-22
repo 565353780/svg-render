@@ -17,14 +17,15 @@ def demo():
     text_color = [0, 0, 255]
     text_size = 1
     text_line_width = 1
-    window_name = '[Renderer][' + render_mode + ']'
     print_progress = True
     selected_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
     custom_semantic_list = None
+    wait_key = 0
+    window_name = '[Renderer][' + render_mode + ']'
 
     renderer = Renderer(width, height, free_width, render_width, render_height)
     renderer.renderFile(svg_file_path, render_mode, line_width, text_color,
-                        text_size, text_line_width, window_name,
-                        print_progress, selected_semantic_idx_list,
-                        custom_semantic_list)
+                        text_size, text_line_width, print_progress,
+                        selected_semantic_idx_list, custom_semantic_list)
+    renderer.show(wait_key, window_name)
     return True

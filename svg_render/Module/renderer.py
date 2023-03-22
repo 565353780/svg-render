@@ -55,7 +55,11 @@ class Renderer(object):
         self.custom_semantic_list = None
         return
 
-    def reset(self):
+    def resetImage(self):
+        self.image = np.zeros([self.height, self.width, 3], dtype=np.uint8)
+        return True
+
+    def resetTransform(self):
         self.x_min = float('inf')
         self.y_min = float('inf')
         self.x_max = -float('inf')
@@ -65,13 +69,13 @@ class Renderer(object):
         self.scale = None
 
         self.resetImage()
+        return True
+
+    def reset(self):
+        self.resetTransform()
 
         self.selected_semantic_idx_list = None
         self.custom_semantic_list = None
-        return True
-
-    def resetImage(self):
-        self.image = np.zeros([self.height, self.width, 3], dtype=np.uint8)
         return True
 
     def addPoint(self, point):
@@ -130,7 +134,7 @@ class Renderer(object):
         return True
 
     def updateTransform(self, svg_data):
-        self.reset()
+        self.resetTransform()
 
         self.updateViewBox(svg_data)
 
@@ -490,28 +494,15 @@ class Renderer(object):
                text_color=[0, 0, 255],
                text_size=1,
                text_line_width=1,
-               window_name="[Renderer][image]",
-               selected_semantic=None,
-               custom_semantic=None):
-        self.selected_semantic = selected_semantic
-        self.custom_semantic = custom_semantic
+               selected_semantic_idx_list=None,
+               custom_semantic_list=None):
+        self.selected_semantic_idx_list = selected_semantic_idx_list
+        self.custom_semantic_list = custom_semantic_list
 
         self.image_list = []
 
         self.updateImage(svg_data, render_mode, line_width, text_color,
                          text_size, text_line_width)
-
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, self.render_width, self.render_height)
-
-        if len(self.image_list) == 0:
-            cv2.imshow(window_name, self.image)
-            cv2.waitKey(0)
-            return True
-
-        render_image = np.hstack(self.image_list)
-        cv2.imshow(window_name, render_image)
-        cv2.waitKey(0)
         return True
 
     def renderFile(self,
@@ -521,7 +512,6 @@ class Renderer(object):
                    text_color=[0, 0, 255],
                    text_size=1,
                    text_line_width=1,
-                   window_name="[Renderer][image]",
                    print_progress=False,
                    selected_semantic_idx_list=None,
                    custom_semantic_list=None):
@@ -605,5 +595,22 @@ class Renderer(object):
             pbar.close()
 
         return self.render(svg_data, render_mode, line_width, text_color,
-                           text_size, text_line_width, window_name,
+                           text_size, text_line_width,
                            selected_semantic_idx_list, custom_semantic_list)
+
+    def getRenderImage(self):
+        if len(self.image_list) == 0:
+            return self.image
+
+        render_image = np.hstack(self.image_list)
+        return render_image
+
+    def show(self, wait_key=0, window_name='[Renderer][image]'):
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window_name, self.render_width, self.render_height)
+
+        render_image = self.getRenderImage()
+
+        cv2.imshow(window_name, render_image)
+        cv2.waitKey(wait_key)
+        return True
