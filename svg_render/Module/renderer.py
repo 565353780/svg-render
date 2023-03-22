@@ -13,7 +13,6 @@ from tqdm import tqdm
 from svg_render.Config.color import COLOR_DICT
 
 render_mode_list = ['type', 'semantic', 'selected_semantic', 'instance']
-render_mode = 'type+semantic+selected_semantic'
 
 
 class Renderer(object):
@@ -284,13 +283,13 @@ class Renderer(object):
         print("\t can not solve this segment with type [" + dtype + "]!")
         return False
 
-    def updateImageByRenderType(self,
-                                svg_data,
-                                line_width=1,
-                                save_into_list=False,
-                                text_color=[0, 0, 255],
-                                text_size=1,
-                                text_line_width=1):
+    def updateImageByType(self,
+                          svg_data,
+                          line_width=1,
+                          save_into_list=False,
+                          text_color=[0, 0, 255],
+                          text_size=1,
+                          text_line_width=1):
         for segment, dtype in zip(svg_data['segment_list'],
                                   svg_data['dtype_list']):
             self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width,
@@ -301,13 +300,13 @@ class Renderer(object):
             self.image_list.append(deepcopy(self.image))
         return True
 
-    def updateImageByRenderSemantic(self,
-                                    svg_data,
-                                    line_width=1,
-                                    save_into_list=False,
-                                    text_color=[0, 0, 255],
-                                    text_size=1,
-                                    text_line_width=1):
+    def updateImageBySemantic(self,
+                              svg_data,
+                              line_width=1,
+                              save_into_list=False,
+                              text_color=[0, 0, 255],
+                              text_size=1,
+                              text_line_width=1):
         unit_semantic_idx_list = sorted(list(set(
             svg_data['semantic_id_list'])))
         semantic_color_dict = {}
@@ -334,14 +333,13 @@ class Renderer(object):
             self.image_list.append(deepcopy(self.image))
         return True
 
-    def updateImageByRenderSelectedSemantic(self,
-                                            svg_data,
-                                            line_width=1,
-                                            save_into_list=False,
-                                            text_color=[0, 0, 255],
-                                            text_size=1,
-                                            text_line_width=1):
-        render_semantic_idx_list = [0, 1, 3, 9, 33]
+    def updateImageBySelectedSemantic(self,
+                                      svg_data,
+                                      line_width=1,
+                                      save_into_list=False,
+                                      text_color=[0, 0, 255],
+                                      text_size=1,
+                                      text_line_width=1):
         render_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
         unit_semantic_idx_list = sorted(list(set(
             svg_data['semantic_id_list'])))
@@ -369,13 +367,47 @@ class Renderer(object):
             self.image_list.append(deepcopy(self.image))
         return True
 
-    def updateImageByRenderInstance(self,
+    def updateImageByCustomSemantic(self,
                                     svg_data,
                                     line_width=1,
                                     save_into_list=False,
                                     text_color=[0, 0, 255],
                                     text_size=1,
                                     text_line_width=1):
+        render_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
+        unit_semantic_idx_list = sorted(list(set(
+            svg_data['semantic_id_list'])))
+        semantic_color_dict = {}
+        for unit_semantic_idx in unit_semantic_idx_list:
+            semantic_color_dict[str(unit_semantic_idx)] = np.array(
+                [
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255),
+                    np.random.randint(0, 255)
+                ],
+                dtype=np.uint8).tolist()
+
+        for segment, dtype, semantic_id in zip(svg_data['segment_list'],
+                                               svg_data['dtype_list'],
+                                               svg_data['semantic_id_list']):
+            if semantic_id not in render_semantic_idx_list:
+                continue
+            self.renderSegment(segment, dtype,
+                               semantic_color_dict[str(semantic_id)],
+                               line_width, str(semantic_id), text_color,
+                               text_size, text_line_width)
+
+        if save_into_list:
+            self.image_list.append(deepcopy(self.image))
+        return True
+
+    def updateImageByInstance(self,
+                              svg_data,
+                              line_width=1,
+                              save_into_list=False,
+                              text_color=[0, 0, 255],
+                              text_size=1,
+                              text_line_width=1):
         unit_instance_idx_list = sorted(list(set(
             svg_data['instance_id_list'])))
         instance_color_dict = {}
@@ -422,30 +454,32 @@ class Renderer(object):
         assert render_mode in render_mode_list
 
         if render_mode == 'type':
-            return self.updateImageByRenderType(svg_data, line_width,
-                                                save_into_list, text_color,
-                                                text_size, text_line_width)
+            return self.updateImageByType(svg_data, line_width, save_into_list,
+                                          text_color, text_size,
+                                          text_line_width)
         elif render_mode == 'semantic':
-            return self.updateImageByRenderSemantic(svg_data, line_width,
-                                                    save_into_list, text_color,
-                                                    text_size, text_line_width)
+            return self.updateImageBySemantic(svg_data, line_width,
+                                              save_into_list, text_color,
+                                              text_size, text_line_width)
         elif render_mode == 'selected_semantic':
-            return self.updateImageByRenderSelectedSemantic(
-                svg_data, line_width, save_into_list, text_color, text_size,
-                text_line_width)
+            return self.updateImageBySelectedSemantic(svg_data, line_width,
+                                                      save_into_list,
+                                                      text_color, text_size,
+                                                      text_line_width)
         elif render_mode == 'instance':
-            return self.updateImageByRenderInstance(svg_data, line_width,
-                                                    save_into_list, text_color,
-                                                    text_size, text_line_width)
+            return self.updateImageByInstance(svg_data, line_width,
+                                              save_into_list, text_color,
+                                              text_size, text_line_width)
         return True
 
     def render(self,
                svg_data,
+               render_mode='type',
                line_width=1,
                text_color=[0, 0, 255],
                text_size=1,
                text_line_width=1,
-               window_name="[Renderer][" + render_mode + "]"):
+               window_name="[Renderer][image]"):
         self.image_list = []
 
         self.updateImage(svg_data, render_mode, line_width, text_color,
@@ -466,10 +500,12 @@ class Renderer(object):
 
     def renderFile(self,
                    svg_file_path,
+                   render_mode='type',
                    line_width=1,
                    text_color=[0, 0, 255],
                    text_size=1,
                    text_line_width=1,
+                   window_name="[Renderer][image]",
                    print_progress=False):
         assert os.path.exists(svg_file_path)
 
@@ -550,5 +586,5 @@ class Renderer(object):
         if print_progress:
             pbar.close()
 
-        return self.render(svg_data, line_width, text_color, text_size,
-                           text_line_width)
+        return self.render(svg_data, render_mode, line_width, text_color,
+                           text_size, text_line_width, window_name)
