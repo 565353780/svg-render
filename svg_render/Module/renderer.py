@@ -12,8 +12,6 @@ from tqdm import tqdm
 
 from svg_render.Config.color import COLOR_DICT
 
-render_mode_list = ['type', 'semantic', 'selected_semantic', 'instance']
-
 
 class Renderer(object):
 
@@ -24,6 +22,11 @@ class Renderer(object):
                  render_width=2560,
                  render_height=1440,
                  text_size=1):
+        self.render_mode_list = [
+            'type', 'semantic', 'selected_semantic', 'custom_semantic',
+            'instance'
+        ]
+
         self.width = width
         self.height = height
         self.free_width = free_width
@@ -47,6 +50,9 @@ class Renderer(object):
         self.text_color = [0, 0, 255]
         self.text_size = text_size
         self.text_line_width = 1
+
+        self.selected_semantic_idx_list = None
+        self.custom_semantic_list = None
         return
 
     def reset(self):
@@ -59,6 +65,9 @@ class Renderer(object):
         self.scale = None
 
         self.resetImage()
+
+        self.selected_semantic_idx_list = None
+        self.custom_semantic_list = None
         return True
 
     def resetImage(self):
@@ -340,11 +349,11 @@ class Renderer(object):
                                       text_color=[0, 0, 255],
                                       text_size=1,
                                       text_line_width=1):
-        render_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
-        unit_semantic_idx_list = sorted(list(set(
-            svg_data['semantic_id_list'])))
+        assert self.selected_semantic_idx_list is not None
+
         semantic_color_dict = {}
-        for unit_semantic_idx in unit_semantic_idx_list:
+        for unit_semantic_idx in sorted(
+                list(set(self.selected_semantic_idx_list))):
             semantic_color_dict[str(unit_semantic_idx)] = np.array(
                 [
                     np.random.randint(0, 255),
@@ -356,7 +365,7 @@ class Renderer(object):
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                svg_data['semantic_id_list']):
-            if semantic_id not in render_semantic_idx_list:
+            if semantic_id not in self.selected_semantic_idx_list:
                 continue
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
@@ -374,9 +383,9 @@ class Renderer(object):
                                     text_color=[0, 0, 255],
                                     text_size=1,
                                     text_line_width=1):
-        render_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
-        unit_semantic_idx_list = sorted(list(set(
-            svg_data['semantic_id_list'])))
+        assert self.custom_semantic_list is not None
+
+        unit_semantic_idx_list = sorted(list(set(self.custom_semantic_list)))
         semantic_color_dict = {}
         for unit_semantic_idx in unit_semantic_idx_list:
             semantic_color_dict[str(unit_semantic_idx)] = np.array(
@@ -389,9 +398,7 @@ class Renderer(object):
 
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
-                                               svg_data['semantic_id_list']):
-            if semantic_id not in render_semantic_idx_list:
-                continue
+                                               self.custom_semantic_list):
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
                                line_width, str(semantic_id), text_color,
@@ -451,7 +458,7 @@ class Renderer(object):
                                  text_color, text_size, text_line_width, True)
             return True
 
-        assert render_mode in render_mode_list
+        assert render_mode in self.render_mode_list
 
         if render_mode == 'type':
             return self.updateImageByType(svg_data, line_width, save_into_list,
@@ -466,6 +473,10 @@ class Renderer(object):
                                                       save_into_list,
                                                       text_color, text_size,
                                                       text_line_width)
+        elif render_mode == 'custom_semantic':
+            return self.updateImageByCustomSemantic(svg_data, line_width,
+                                                    save_into_list, text_color,
+                                                    text_size, text_line_width)
         elif render_mode == 'instance':
             return self.updateImageByInstance(svg_data, line_width,
                                               save_into_list, text_color,
@@ -479,7 +490,12 @@ class Renderer(object):
                text_color=[0, 0, 255],
                text_size=1,
                text_line_width=1,
-               window_name="[Renderer][image]"):
+               window_name="[Renderer][image]",
+               selected_semantic=None,
+               custom_semantic=None):
+        self.selected_semantic = selected_semantic
+        self.custom_semantic = custom_semantic
+
         self.image_list = []
 
         self.updateImage(svg_data, render_mode, line_width, text_color,
@@ -506,7 +522,9 @@ class Renderer(object):
                    text_size=1,
                    text_line_width=1,
                    window_name="[Renderer][image]",
-                   print_progress=False):
+                   print_progress=False,
+                   selected_semantic_idx_list=None,
+                   custom_semantic_list=None):
         assert os.path.exists(svg_file_path)
 
         svg_data = {
@@ -587,4 +605,5 @@ class Renderer(object):
             pbar.close()
 
         return self.render(svg_data, render_mode, line_width, text_color,
-                           text_size, text_line_width, window_name)
+                           text_size, text_line_width, window_name,
+                           selected_semantic_idx_list, custom_semantic_list)

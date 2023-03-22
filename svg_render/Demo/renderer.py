@@ -6,6 +6,7 @@ from svg_render.Module.renderer import Renderer
 
 def demo():
     svg_file_path = "/home/chli/chLi/FloorPlanCAD/svg/train/0000-0002.svg"
+    render_mode = 'type+semantic+selected_semantic+custom_semantic'
     render_mode = 'type+semantic+selected_semantic'
     width = 4000
     height = 4000
@@ -18,9 +19,12 @@ def demo():
     text_line_width = 1
     window_name = '[Renderer][' + render_mode + ']'
     print_progress = True
+    selected_semantic_idx_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 33, 34]
+    custom_semantic_list = None
 
     renderer = Renderer(width, height, free_width, render_width, render_height)
     renderer.renderFile(svg_file_path, render_mode, line_width, text_color,
                         text_size, text_line_width, window_name,
-                        print_progress)
+                        print_progress, selected_semantic_idx_list,
+                        custom_semantic_list)
     return True
