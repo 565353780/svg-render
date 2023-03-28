@@ -53,6 +53,8 @@ class Renderer(object):
 
         self.selected_semantic_idx_list = None
         self.custom_semantic_list = None
+
+        self.unknown_dtype_list = []
         return
 
     def resetImage(self):
@@ -71,11 +73,17 @@ class Renderer(object):
         self.resetImage()
         return True
 
+    def resetWARN(self):
+        self.unknown_dtype_list = []
+        return True
+
     def reset(self):
         self.resetTransform()
 
         self.selected_semantic_idx_list = None
         self.custom_semantic_list = None
+
+        self.resetWARN()
         return True
 
     def addPoint(self, point):
@@ -292,8 +300,10 @@ class Renderer(object):
             return self.renderEllipse(segment, color, line_width, put_text,
                                       text_color, text_size, text_line_width)
 
-        print("[WARN][Renderer::renderSegment]")
-        print("\t can not solve this segment with type [" + dtype + "]!")
+        if dtype not in self.unknown_dtype_list:
+            self.unknown_dtype_list.append(dtype)
+            print("[WARN][Renderer::renderSegment]")
+            print("\t can not solve this segment with type [" + dtype + "]!")
         return False
 
     def updateImageByType(self,
@@ -507,6 +517,7 @@ class Renderer(object):
 
         self.image_list = []
 
+        self.resetWARN()
         self.updateImage(svg_data, render_mode, line_width, text_color,
                          text_size, text_line_width)
         return True
