@@ -305,9 +305,12 @@ class Renderer(object):
                           text_line_width=1):
         for segment, dtype in zip(svg_data['segment_list'],
                                   svg_data['dtype_list']):
-            self.renderSegment(segment, dtype, COLOR_DICT[dtype], line_width,
-                               dtype[0], text_color, text_size,
-                               text_line_width)
+            if dtype not in COLOR_DICT.keys():
+                color = COLOR_DICT['Others']
+            else:
+                color = COLOR_DICT[dtype]
+            self.renderSegment(segment, dtype, color, line_width, dtype[0],
+                               text_color, text_size, text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -403,6 +406,9 @@ class Renderer(object):
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
                                                self.custom_semantic_list):
+            # FIXME: tmp not render BG
+            if semantic_id == 0:
+                continue
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
                                line_width, str(semantic_id), text_color,
