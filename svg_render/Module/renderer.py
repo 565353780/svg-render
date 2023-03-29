@@ -412,6 +412,9 @@ class Renderer(object):
                     np.random.randint(0, 255)
                 ],
                 dtype=np.uint8).tolist()
+            # FIXME: tmp use white color
+            semantic_color_dict[str(unit_semantic_idx)] = np.array(
+                [255, 255, 255], dtype=np.uint8).tolist()
 
         for segment, dtype, semantic_id in zip(svg_data['segment_list'],
                                                svg_data['dtype_list'],
