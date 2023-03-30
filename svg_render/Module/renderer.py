@@ -21,7 +21,8 @@ class Renderer(object):
                  free_width=50,
                  render_width=2560,
                  render_height=1440,
-                 text_size=1):
+                 text_size=1,
+                 debug=False):
         self.render_mode_list = [
             'type', 'semantic', 'selected_semantic', 'custom_semantic',
             'instance'
@@ -55,6 +56,8 @@ class Renderer(object):
         self.custom_semantic_list = None
 
         self.unknown_dtype_list = []
+
+        self.debug = debug
         return
 
     def resetImage(self):
@@ -320,9 +323,10 @@ class Renderer(object):
             else:
                 color = COLOR_DICT[dtype]
 
-            #FIXME: tmp not render text
-            put_text = dtype[0]
-            put_text = None
+            if self.debug:
+                put_text = dtype[0]
+            else:
+                put_text = None
 
             self.renderSegment(segment, dtype, color, line_width, put_text,
                                text_color, text_size, text_line_width)
@@ -355,10 +359,16 @@ class Renderer(object):
                                                svg_data['semantic_id_list']):
             if semantic_id == 0:
                 continue
+
+            if self.debug:
+                put_text = str(semantic_id)
+            else:
+                put_text = None
+
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
-                               line_width, str(semantic_id), text_color,
-                               text_size, text_line_width)
+                               line_width, put_text, text_color, text_size,
+                               text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -392,10 +402,16 @@ class Renderer(object):
                                                svg_data['semantic_id_list']):
             if semantic_id not in self.selected_semantic_idx_list:
                 continue
+
+            if self.debug:
+                put_text = str(semantic_id)
+            else:
+                put_text = None
+
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
-                               line_width, str(semantic_id), text_color,
-                               text_size, text_line_width)
+                               line_width, put_text, text_color, text_size,
+                               text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -434,10 +450,16 @@ class Renderer(object):
             # FIXME: tmp not render BG
             if semantic_id == 0:
                 continue
+
+            if self.debug:
+                put_text = str(semantic_id)
+            else:
+                put_text = None
+
             self.renderSegment(segment, dtype,
                                semantic_color_dict[str(semantic_id)],
-                               line_width, str(semantic_id), text_color,
-                               text_size, text_line_width)
+                               line_width, put_text, text_color, text_size,
+                               text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
@@ -467,10 +489,16 @@ class Renderer(object):
                                                svg_data['instance_id_list']):
             if instance_id == -1:
                 continue
+
+            if self.debug:
+                put_text = str(instance_id)
+            else:
+                put_text = None
+
             self.renderSegment(segment, dtype,
                                instance_color_dict[str(instance_id)],
-                               line_width, str(instance_id), text_color,
-                               text_size, text_line_width)
+                               line_width, put_text, text_color, text_size,
+                               text_line_width)
 
         if save_into_list:
             self.image_list.append(deepcopy(self.image))
