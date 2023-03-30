@@ -319,7 +319,12 @@ class Renderer(object):
                 color = COLOR_DICT['Others']
             else:
                 color = COLOR_DICT[dtype]
-            self.renderSegment(segment, dtype, color, line_width, dtype[0],
+
+            #FIXME: tmp not render text
+            put_text = dtype[0]
+            put_text = None
+
+            self.renderSegment(segment, dtype, color, line_width, put_text,
                                text_color, text_size, text_line_width)
 
         if save_into_list:
@@ -366,7 +371,10 @@ class Renderer(object):
                                       text_color=[0, 0, 255],
                                       text_size=1,
                                       text_line_width=1):
-        assert self.selected_semantic_idx_list is not None
+        if self.selected_semantic_idx_list is None:
+            if save_into_list:
+                self.image_list.append(deepcopy(self.image))
+            return True
 
         semantic_color_dict = {}
         for unit_semantic_idx in sorted(
@@ -400,9 +408,13 @@ class Renderer(object):
                                     text_color=[0, 0, 255],
                                     text_size=1,
                                     text_line_width=1):
-        assert self.custom_semantic_list is not None
+        if self.custom_semantic_list is None:
+            if save_into_list:
+                self.image_list.append(deepcopy(self.image))
+            return True
 
         unit_semantic_idx_list = sorted(list(set(self.custom_semantic_list)))
+
         semantic_color_dict = {}
         for unit_semantic_idx in unit_semantic_idx_list:
             semantic_color_dict[str(unit_semantic_idx)] = np.array(
@@ -624,6 +636,12 @@ class Renderer(object):
 
         render_image = np.hstack(self.image_list)
         return render_image
+
+    def getRenderImageList(self):
+        if len(self.image_list) == 0:
+            return [self.image]
+
+        return self.image_list
 
     def show(self, wait_key=0, window_name='[Renderer][image]'):
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
